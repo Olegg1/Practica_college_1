@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Данные пользователя</title>
+        <style>
+
+            table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #333333;
+            margin-bottom: 20px;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            }
+            th {
+            text-align: left;
+            padding: 10px;
+            border: 1px solid #cccccc;
+            background-color: #f2f2f2;
+            }
+            td {
+            padding: 10px;
+            border: 1px solid #cccccc;
+            }
+            tr:nth-child(even) {
+            background-color: #f9f9f9;
+            }
+            tr:hover {
+            background-color: #e6e6e6;
+            }
+
+        </style>
+</head>
+<body>
+<h1>Данные пользователя</h1>
+<h3>Если данные не отображаются заполните их нажав на кнопку "Назад на форму"</h3>
+<table id="user-data-table">
+    <thead>
+        <tr>
+            <th>Параметр</th>
+            <th>Данные</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+<button id="back">Назад на форму</button>
+<button id="back_one">Назад к таблице</button>
+
+<script>
+    // Получение JSON-данных с сервера и заполнение таблицы
+    fetch('/get_config')
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.querySelector('#user-data-table tbody');
+            tableBody.innerHTML = ''; // Очистка содержимого тела таблицы перед заполнением новыми данными
+            for (let key in data) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${key}</td><td>${data[key]}</td>`;
+                tableBody.appendChild(row);
+            }
+        })
+        .catch(error => console.error(error));
+
+
+        // Добавьте следующий код после заполнения таблицы:
+        const backBtn = document.querySelector('#back');
+        backBtn.addEventListener('click', () => {
+            window.location.href = '/';
+        });
+        // Добавьте следующий код после заполнения таблицы:
+        const backBtn_2 = document.querySelector('#back_one');
+        backBtn_2.addEventListener('click', () => {
+            window.location.href = '/app';
+        });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Получение и сохранение данных в формате JSON</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-align: left;
+            overflow-x: auto;
+        }
+
+        th, td {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .gear-icon {
+            display: inline-block;
+            margin-left: 10px;
+            width: 30px;
+            height: 30px;
+            background-color: #808080;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 30px;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        button {
+            display: inline-block;
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: none;
+            color: #fff;
+            background-color: #007bff;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.3);
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+        .dropdown {
+          position: relative;
+          display: inline-block;
+        }
+
+        .dropdown-content {
+          display: none;
+          position: absolute;
+          z-index: 1;
+        }
+
+        .dropdown:hover .dropdown-content {
+          display: block;
+        }
+                .wrapper {
+          position: relative;
+        }
+
+
+
+
+    </style>
+</head>
+<body>
+    <h1>Данные из базы данных:</h1>
+
+    <button id="get-json-btn">Скачать данные в JSON-файл</button>
+    <button id="insert-data-btn">Загрузить еще данные</button>
+    <p id="row-count">Количество строк: 0</p>
+    <button id="user-data-link">Показать данные пользователя</button>
+
+
+    <table id="data-table">
+        <thead>
+            <tr>
+                <th>IP-адрес</th>
+                <th>Дата и время</th>
+                <th>Вид запроса</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+
+<script>
+    function saveToJson() {
+        fetch('/get_json')
+            .then(response => response.json())
+            .then(data => {
+                const jsonStr = JSON.stringify(data, null, 2);
+                const jsonBlob = new Blob([jsonStr], { type: 'application/json' });
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(jsonBlob);
+                downloadLink.download = 'data.json';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+            })
+            .catch(error => console.error(error));
+    }
+
+    const saveJsonBtn = document.querySelector('#get-json-btn');
+    saveJsonBtn.addEventListener('click', saveToJson);
+
+    function populateTable(data) {
+        const tableBody = document.querySelector('#data-table tbody');
+        tableBody.innerHTML = ''; // Очистка содержимого тела таблицы перед заполнением новыми данными
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${item.ip}</td><td>${item.date}</td><td>${item.request}</td>`;
+            tableBody.appendChild(row);
+        });
+
+        // Обновление числа строк
+        const rowCountSpan = document.getElementById('row-count');
+        const rowCount = data.length;
+        rowCountSpan.textContent = `Количество строк: ${rowCount}`;
+    }
+
+    // Получение JSON-данных с сервера и заполнение таблицы
+    fetch('/get_json')
+        .then(response => response.json())
+        .then(data => {
+            populateTable(data);
+        })
+        .catch(error => console.error(error));
+
+    // Отправка данных на сервер для добавления в базу данных
+    const insertDataBtn = document.getElementById('insert-data-btn');
+    insertDataBtn.addEventListener('click', () => {
+        fetch('/insert_data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                // Получение обновленных данных с сервера и заполнение таблицы
+                fetch('/get_json')
+                    .then(response => response.json())
+                    .then(data => {
+                        populateTable(data);
+                    })
+                    .catch(error => console.error(error));
+            })
+            .catch(error => console.error(error));
+    });
+
+    // Получение элемента таблицы
+        const dataTable = document.getElementById('data-table');
+
+        // Обновление числа строк
+        const rowCountSpan = document.getElementById('row-count');
+        const rowCount = dataTable.rows.length - 1; // Вычитаем один, потому что первая строка - заголовок
+        rowCountSpan.textContent = `Количество строк: ${rowCount}`;
+
+
+        const userDataLink = document.querySelector('#user-data-link');
+        userDataLink.addEventListener('click', () => {
+            window.location.href = '/user_data';
+        });
+
+
+</script>
+</body>
+</html>
