@@ -1,4 +1,0 @@
-HOST: 127.0.0.1, USER: logs
-PASSWORD: 1, DB_NAME: log_data
-LOG_FOLDER_PATH: C:\xampp\apache\logs
-, ERROR_LOG_FILE_NAME: access.log

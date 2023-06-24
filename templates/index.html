@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <title>Получение и сохранение данных в формате JSON</title>
     <style>
         table {
@@ -63,128 +64,359 @@
             background-color: #0056b3;
         }
         .dropdown {
-          position: relative;
-          display: inline-block;
+            position: relative;
+            display: inline-block;
         }
 
         .dropdown-content {
-          display: none;
-          position: absolute;
-          z-index: 1;
+            display: none;
+            position: absolute;
+            z-index: 1;
         }
 
         .dropdown:hover .dropdown-content {
-          display: block;
+            display: block;
         }
-                .wrapper {
-          position: relative;
+        .wrapper {
+            position: relative;
         }
-
-
-
-
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="datetime-local"] {
+            margin-bottom: 20px;
+            padding: 10px;
+        }
+        #data-table th:nth-child(3),
+        #data-table td:nth-child(3) {
+            min-width: 100px;
+            max-width: 300px;
+            width: var(--column-width, 150px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
 </head>
 <body>
-    <h1>Данные из базы данных:</h1>
 
+    <h1>Данные из базы данных:</h1>
     <button id="get-json-btn">Скачать данные в JSON-файл</button>
     <button id="insert-data-btn">Загрузить еще данные</button>
     <p id="row-count">Количество строк: 0</p>
-    <button id="user-data-link">Показать данные пользователя</button>
+    <button id="user-data-link"><i class="fa fa-cog gear-icon"></i> Показать данные пользователя</button>
 
-
+    <form method="POST" action="#">
+        <label for="start-datetime">Start datetime:</label>
+        <input type="datetime-local" id="start-datetime" name="start-datetime" step="1">
+        <label for="end-datetime">End datetime:</label>
+        <input type="datetime-local" id="end-datetime" name="end-datetime" step="1">
+        <button type="button" id="apply-filters-btn">Применить фильтры</button>
+    </form>
+    <label for="ip-filter">IP-адрес:</label>
+    <select id="ip-filter" name="ip-filter">
+      <option value="">Все</option>
+    </select>
+    <label for="group-by-ip-checkbox">Группировать по IP:</label>
+    <input type="checkbox" id="group-by-ip-checkbox" name="group-by-ip-checkbox">
+    <label for="group-by-date-checkbox">Группировать по дате:</label>
+    <input type="checkbox" id="group-by-date-checkbox" name="group-by-date-checkbox">
     <table id="data-table">
-        <thead>
-            <tr>
-                <th>IP-адрес</th>
-                <th>Дата и время</th>
-                <th>Вид запроса</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-
-
+    <thead>
+        <tr>
+            <th>IP-адрес</th>
+            <th>Дата и время</th>
+            <th>Вид запроса</th>
+            <th>Код запроса</th>
+            <th>Размер</th>
+            <th>Доп информация</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
 <script>
-    function saveToJson() {
-        fetch('/get_json')
-            .then(response => response.json())
-            .then(data => {
-                const jsonStr = JSON.stringify(data, null, 2);
-                const jsonBlob = new Blob([jsonStr], { type: 'application/json' });
-                const downloadLink = document.createElement('a');
-                downloadLink.href = URL.createObjectURL(jsonBlob);
-                downloadLink.download = 'data.json';
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-            })
-            .catch(error => console.error(error));
-    }
 
-    const saveJsonBtn = document.querySelector('#get-json-btn');
-    saveJsonBtn.addEventListener('click', saveToJson);
+let originalData = []; // Оригинальные данные без фильтрации
+let filteredData = []; // Отфильтрованные данные
 
-    function populateTable(data) {
-        const tableBody = document.querySelector('#data-table tbody');
-        tableBody.innerHTML = ''; // Очистка содержимого тела таблицы перед заполнением новыми данными
-        data.forEach(item => {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td>${item.ip}</td><td>${item.date}</td><td>${item.request}</td>`;
-            tableBody.appendChild(row);
-        });
+function saveToJson() {
+    const dataToSave = filteredData.length > 0 ? filteredData : originalData;
 
-        // Обновление числа строк
-        const rowCountSpan = document.getElementById('row-count');
-        const rowCount = data.length;
-        rowCountSpan.textContent = `Количество строк: ${rowCount}`;
-    }
+    const jsonStr = JSON.stringify(dataToSave, null, 2);
+    const jsonBlob = new Blob([jsonStr], { type: 'application/json' });
+    const downloadLink = document.createElement('a');
+    downloadLink.href = URL.createObjectURL(jsonBlob);
+    downloadLink.download = 'data.json';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+}
 
-    // Получение JSON-данных с сервера и заполнение таблицы
-    fetch('/get_json')
-        .then(response => response.json())
-        .then(data => {
-            populateTable(data);
-        })
-        .catch(error => console.error(error));
+const saveJsonBtn = document.querySelector('#get-json-btn');
+saveJsonBtn.addEventListener('click', saveToJson);
 
-    // Отправка данных на сервер для добавления в базу данных
-    const insertDataBtn = document.getElementById('insert-data-btn');
-    insertDataBtn.addEventListener('click', () => {
-        fetch('/insert_data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                // Получение обновленных данных с сервера и заполнение таблицы
-                fetch('/get_json')
-                    .then(response => response.json())
-                    .then(data => {
-                        populateTable(data);
-                    })
-                    .catch(error => console.error(error));
-            })
-            .catch(error => console.error(error));
+
+function populateTable(data) {
+    const tableBody = document.querySelector('#data-table tbody');
+    tableBody.innerHTML = ''; // Очистка содержимого тела таблицы перед заполнением новыми данными
+    data.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${item.ip}</td><td>${item.date}</td><td>${item.requested_URL}</td><td>${item.response_code}</td><td>${item.response_size}</td><td>${item.user_agent}</td>`;
+        tableBody.appendChild(row);
     });
 
-    // Получение элемента таблицы
-        const dataTable = document.getElementById('data-table');
-
-        // Обновление числа строк
-        const rowCountSpan = document.getElementById('row-count');
-        const rowCount = dataTable.rows.length - 1; // Вычитаем один, потому что первая строка - заголовок
-        rowCountSpan.textContent = `Количество строк: ${rowCount}`;
+    // Обновление числа строк
+    const rowCountSpan = document.getElementById('row-count');
+    const rowCount = data.length;
+    rowCountSpan.textContent = `Количество строк: ${rowCount}`;
+}
 
 
-        const userDataLink = document.querySelector('#user-data-link');
-        userDataLink.addEventListener('click', () => {
-            window.location.href = '/user_data';
-        });
+// Получение JSON-данных с сервера и заполнение таблицы
+setInterval(() => {
+  console.log('Выполняем запрос к серверу');
+  fetchAndPopulateTable();
+}, 3600000);
 
+function fetchAndPopulateTable() {
+  fetch('/get_json')
+    .then(response => response.json())
+    .then(data => {
+      originalData = data;
+      filteredData = data;
+      populateTable(data);
+      console.log('Данные обновлены');
+    })
+    .catch(error => console.error(error));
+}
+
+
+
+// Загрузка и заполнение таблицы при загрузке страницы
+fetchAndPopulateTable();
+
+
+
+
+// Функция для отправки данных на сервер
+const loadMoreBtn = document.getElementById('insert-data-btn');
+let intervalId;
+
+function startAutoUpdate() {
+  intervalId = setInterval(() => {
+    sendDataToServer();
+  }, 3600000);
+}
+
+function stopAutoUpdate() {
+  clearInterval(intervalId);
+}
+
+loadMoreBtn.addEventListener('click', () => {
+  sendDataToServer();
+});
+
+function sendDataToServer() {
+  fetch('/insert_data', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+    .then(response => response.json())
+    .then(data => {
+      console.log(data);
+      // Получение обновленных данных с сервера и заполнение таблицы
+      fetchAndPopulateTable();
+    })
+    .catch(error => console.error(error));
+}
+
+startAutoUpdate();
+
+// Получение элемента таблицы
+    const dataTable = document.getElementById('data-table');
+
+    // Обновление числа строк
+    const rowCountSpan = document.getElementById('row-count');
+    const rowCount = dataTable.rows.length - 1; // Вычитаем один, потому что первая строка - заголовок
+    rowCountSpan.textContent = `Количество строк: ${rowCount}`;
+
+
+    const userDataLink = document.querySelector('#user-data-link');
+    userDataLink.addEventListener('click', () => {
+        window.location.href = 'user_data';
+    });
+
+// Создаем массив для отслеживания уникальных IP-адресов
+const uniqueIps = [];
+// Переменная для отслеживания выбранного IP-адреса
+let selectedIp = '';
+
+// Функция для загрузки данных и обновления списка IP-адресов
+function loadAndRefreshData() {
+  fetch('/get_json')
+    .then(response => response.json())
+    .then(data => {
+      // Обновляем массив уникальных IP-адресов
+      uniqueIps.length = 0; // Очищаем массив
+      data.forEach(item => {
+        if (!uniqueIps.includes(item.ip)) {
+          uniqueIps.push(item.ip);
+        }
+      });
+
+      // Обновляем список option в select
+      const select = document.querySelector('#ip-filter');
+      select.innerHTML = '';
+
+      const allOption = document.createElement('option');
+      allOption.setAttribute('value', '');
+      allOption.textContent = 'Все';
+      select.appendChild(allOption);
+
+      uniqueIps.forEach(ip => {
+        const option = document.createElement('option');
+        option.setAttribute('value', ip);
+        option.textContent = ip;
+        select.appendChild(option);
+      });
+
+      // Выбираем сохраненный IP-адрес при открытии списка
+      select.value = selectedIp;
+
+      // Применяем фильтры после обновления данных
+      applyFilters();
+    })
+    .catch(error => console.error(error));
+}
+
+// Вызываем функцию для загрузки данных и обновления списка IP-адресов
+loadAndRefreshData();
+
+// Вызываем функцию для обновления списка IP-адресов при каждом новом запросе к серверу
+setInterval(() => {
+  loadAndRefreshData();
+}, 5000);
+
+// Обработчик события для выбора IP-адреса
+const select = document.querySelector('#ip-filter');
+select.addEventListener('change', () => {
+  selectedIp = select.value;
+  applyFilters();
+});
+
+// Обработчик события для кнопки "Загрузить еще данные"
+const loadMoreButton = document.querySelector('#insert-data-btn');
+loadMoreButton.addEventListener('click', () => {
+  // Здесь выполняется логика загрузки дополнительных данных в таблицу
+
+  // Перед загрузкой данных обновляем выбранный IP-адрес
+  selectedIp = select.value;
+
+  // Загружаем и обновляем данные
+  loadAndRefreshData();
+});
+
+
+
+
+// Получение кнопки "Применить фильтры"
+const applyFiltersBtn = document.querySelector('#apply-filters-btn');
+
+// Обработчик события для кнопки "Применить фильтры"
+applyFiltersBtn.addEventListener('click', () => {
+  applyFilters();
+});
+
+function applyFilters() {
+  const startDatetime = document.getElementById('start-datetime').value;
+  const endDatetime = document.getElementById('end-datetime').value;
+  const groupByIp = document.getElementById('group-by-ip-checkbox').checked;
+  const groupDataByDate = document.getElementById('group-by-date-checkbox').checked;
+
+// Применяем фильтры
+filteredData = originalData.filter(item => {
+// Фильтр по дате и времени
+if (startDatetime && endDatetime) {
+  const itemDatetime = new Date(item.date)
+
+  const startFilterDatetime = new Date(startDatetime);
+  const endFilterDatetime = new Date(endDatetime);
+
+  console.log("itemDatetime:", itemDatetime);
+  console.log("Start Filter Datetime:", startFilterDatetime);
+  console.log("End Filter Datetime:", endFilterDatetime);
+
+
+      if (itemDatetime < startFilterDatetime || itemDatetime > endFilterDatetime) {
+        return false;
+      }
+}
+else if (startDatetime && !endDatetime){
+    const itemDatetime = new Date(item.date);
+    const startFilterDatetime = new Date(startDatetime);
+
+     if (itemDatetime < startFilterDatetime) {
+        return false;
+      }
+}
+else if (!startDatetime && endDatetime){
+    const itemDatetime = new Date(item.date);
+    const endFilterDatetime = new Date(endDatetime);
+
+     if (itemDatetime > endFilterDatetime) {
+        return false;
+      }
+}
+
+// Фильтр по IP-адресу
+if (selectedIp && item.ip !== selectedIp) {
+  return false;
+}
+return true;
+});
+
+
+// Группировка по IP-адресу
+if (groupByIp) {
+const groupedData = {};
+filteredData.forEach(item => {
+  if (!groupedData[item.ip]) {
+    groupedData[item.ip] = [];
+  }
+  groupedData[item.ip].push(item);
+});
+
+// Сортировка группированных данных по IP-адресу
+const sortedGroups = Object.values(groupedData).sort((a, b) => a[0].ip.localeCompare(b[0].ip));
+
+// Преобразование обратно в плоскую структуру
+filteredData = [].concat(...sortedGroups);
+}
+
+
+if (groupDataByDate) {
+const groupedData = {};
+filteredData.forEach(item => {
+    const day = item.date.substring(8, 10); // Извлекаем день месяца из строки даты
+    if (!groupedData[day]) {
+        groupedData[day] = [];
+    }
+    groupedData[day].push(item);
+});
+
+// Сортировка группированных данных по дню месяца
+const sortedGroups = Object.values(groupedData).sort((a, b) => a[0].date.substring(8, 10) - b[0].date.substring(8, 10));
+console.log(sortedGroups[0])
+// Преобразование обратно в плоскую структуру
+filteredData = [].concat(...sortedGroups);
+console.log(filteredData)
+}
+// Выводим результаты
+populateTable(filteredData);
+
+}
 
 </script>
 </body>
