@@ -458,6 +458,7 @@ def insert_data_route() -> str:
         return f'Вы не ввели данные, {e}'
 
 
+@app.route('/get_config')
 def get_config() -> Union[str, Response]:
     """
     Returns a JSON object containing the configuration data for the Flask application.
